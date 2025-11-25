@@ -5,15 +5,16 @@ import (
 	"time"
 )
 
-func TestSingleWorkerMaxTasksAndTiming(t *testing.T) {
+func TestWorkerWithCustomParams(t *testing.T) {
+	// You can change these values to test different scenarios
 	maxTasks := 5
 	numTasks := 8
-	maxDuration := 250 * time.Millisecond
+	maxDuration := 100 * time.Millisecond
 
 	tasks := make(chan Task, numTasks)
 	results := make(chan Result, numTasks)
 
-	// FIXED: pass maxDuration to match new worker signature
+	// Start worker (same function as main.go)
 	go worker(tasks, results, maxTasks, maxDuration)
 
 	// Send tasks
@@ -22,32 +23,18 @@ func TestSingleWorkerMaxTasksAndTiming(t *testing.T) {
 	}
 	close(tasks)
 
-	successes := 0
-	maxTasksErrors := 0
-	timingErrors := 0
-
+	// Collect results and report errors
+	hadErrors := false
 	for r := range results {
 		if r.Err != nil {
-			if r.Err.Error() == "max_tasks limit exceeded" {
-				maxTasksErrors++
-			} else {
-				timingErrors++
-				successes++ // count timing-error tasks as processed
-			}
+			t.Logf("[Error] Task %d: %v", r.TaskID, r.Err)
+			hadErrors = true
 		} else {
-			successes++
+			t.Logf("%s", r.Msg)
 		}
-
 	}
 
-	if successes != maxTasks {
-		t.Errorf("expected %d successes, got %d", maxTasks, successes)
-	}
-	if maxTasksErrors != numTasks-maxTasks {
-		t.Errorf("expected %d max_tasks errors, got %d", numTasks-maxTasks, maxTasksErrors)
-	}
-	if timingErrors == 0 {
-		t.Errorf("expected at least one timing error but got none")
+	if hadErrors {
+		t.Errorf("Worker produced errors. See logs above.")
 	}
 }
-

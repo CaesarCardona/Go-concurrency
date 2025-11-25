@@ -27,20 +27,25 @@ func worker(tasks <-chan Task, results chan<- Result, maxTasks int, maxDuration 
 			continue
 		}
 
-		start := time.Now()
+		// Simulate work duration based on task ID and maxDuration
+		var workDuration time.Duration
+		if task.ID%2 == 0 {
+			// Force some tasks to exceed maxDuration
+			workDuration = maxDuration + 50*time.Millisecond
+		} else {
+			workDuration = maxDuration - 50*time.Millisecond
+		}
 
-		// Simulate work with variable duration
-		time.Sleep(time.Duration(100+task.ID*100) * time.Millisecond)
+		time.Sleep(workDuration)
 
-		elapsed := time.Since(start)
 		var err error
-		if elapsed > maxDuration {
+		if workDuration > maxDuration {
 			err = fmt.Errorf("task %d exceeded max duration (%v)", task.ID, maxDuration)
 		}
 
 		results <- Result{
 			TaskID: task.ID,
-			Msg:    fmt.Sprintf("Processed task %d in %v", task.ID, elapsed),
+			Msg:    fmt.Sprintf("Processed task %d in %v", task.ID, workDuration),
 			Err:    err,
 		}
 
@@ -48,6 +53,7 @@ func worker(tasks <-chan Task, results chan<- Result, maxTasks int, maxDuration 
 	}
 	close(results)
 }
+
 
 func main() {
 	maxTasks := 5
